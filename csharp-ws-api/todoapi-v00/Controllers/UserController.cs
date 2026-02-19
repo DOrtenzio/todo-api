@@ -37,6 +37,20 @@ namespace todoapi_v00.Controllers
             return User;
         }
 
+        // GET: api/user/byemail/mail
+        [HttpGet("byemail/{email}")]
+        public async Task<ActionResult<User>> GetUserByEmail(string email){
+            var users = await _context.Users.Where(u => u.Email == email).ToListAsync();
+
+            if (users.Count == 0){
+                return NotFound($"Nessun utente trovato con l'email: {email}");
+            }
+            if (users.Count > 1){
+                return Conflict("Errore critico: esistono più utenti registrati con la stessa email.");
+            }
+            return users.First();
+        }
+
         // POST: api/user
         [HttpPost]
         public async Task<ActionResult<User>> PostUser(User item)

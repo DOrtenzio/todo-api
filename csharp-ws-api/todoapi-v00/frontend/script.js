@@ -74,27 +74,26 @@ function loginForm(event) {
 
     console.log("Login di :"+nomeInserito+" email: "+emailInserita);
 
-    fetch(API_USERS)
-    .then(res => res.json())
-    .then(utenti => {
-        console.log("Dbg=> Utenti ricevuti:"+ JSON.stringify(utenti));
+    fetch(API_USERS + "/byemail/" + encodeURIComponent(emailInserita))
+    .then(res => {
+        if (!res.ok) { throw new Error("Utente non trovato o dati non validi"); }
+        return res.json();
+    })
+    .then(utente => {
+        console.log("Dbg=> Ricevuto:" + JSON.stringify(utente));
 
-        const utenteTrovato = utenti.find(u => 
-            u.name.toLowerCase() === nomeInserito && 
-            u.email.toLowerCase() === emailInserita
-        );
+        if (utente.name.toLowerCase() === nomeInserito.toLowerCase()) {
+            const isAdmin = (utente.name.toLowerCase() === "diego" && utente.surname?.toLowerCase() === "bernini");
 
-        if (utenteTrovato) {
-            const isAdmin = (utenteTrovato.name.toLowerCase() === "diego" && utenteTrovato.surname.toLowerCase() === "bernini");
-            errorDiv.style.display = "none"; //per sicurezza
-            settaCookieSessione(utenteTrovato.name, utenteTrovato.email, isAdmin);
-        } else {
+            errorDiv.style.display = "none";
+            settaCookieSessione(utente.name, utente.email, isAdmin);
+        } else { //si email ma no nome
             errorDiv.style.display = "block";
         }
     })
-    .catch(err => {
-        console.error(err);
-        mostraNotifica("Errore Nella Connessione Al Server",true);
+    .catch(error => {
+        console.error("Errore durante la fetch:", error);
+        errorDiv.style.display = "block";
     });
 }
 
@@ -162,7 +161,7 @@ function setCookie(nome, valore, secondi) {
 }
 
 function getCookie(nome) {
-    console.log(" Cookie: "+document.cookie);
+    console.log("Ricerco Cookie:", nome, " Cookie: ", document.cookie);
     const valore = document.cookie.match('(^|;)\\s*' + nome + '\\s*=\\s*([^;]+)');
     //significato regex
         // (^|;)        → il cookie deve iniziare all'inizio della stringa oppure dopo un punto e virgola
@@ -238,6 +237,7 @@ function mostraVistaUtenti() {
 // TODOS (CRUD e UNDO + POLLING) 
 
 function getTodo(id = null) {
+    console.log("gett");
     const url = id ? `${API_TODOS}/${id}` : API_TODOS;
     return fetch(url)
         .then(res => res.ok ? res.json() : [])
@@ -420,7 +420,8 @@ function aggiungiTodo(event, obj = null) {
             mostraNotifica("Attività aggiunta con successo!");
             modificaVistaAggiuntaTodo(); 
         }
-        getTodo();
+        todo_arr.push(nuovo);
+        popolaCardTodos(todo_arr);
     })
     .catch(err => console.error(err));
 }
@@ -454,7 +455,19 @@ function modificaTodo(event, id, obj = null) {
     }).then(() => {
         if(!obj && card) card.querySelector('.modificaBox').style.display = 'none'; 
         mostraNotifica("Attività modificata");
-        getTodo();
+
+        const indice = todo_arr.findIndex(t => t.id === id);
+        if (indice !== -1) {
+            const vecchioTodo = todo_arr[indice];
+            vecchioTodo.name = data.name !== undefined ? data.name : vecchioTodo.name;
+            vecchioTodo.isComplete = data.isComplete !== undefined ? data.isComplete : vecchioTodo.isComplete;
+            vecchioTodo.categoryId = data.categoryId !== undefined ? data.categoryId : vecchioTodo.categoryId;
+            vecchioTodo.listId = data.listId !== undefined ? data.listId : vecchioTodo.listId;
+            console.log("Todo aggiornato: ", vecchioTodo, " con dati: ", data);
+            popolaCardTodos(todo_arr);
+        } else {
+            console.error(`Errore: Impossibile trovare il todo con ID ${id} per aggiornare l'array locale.`);
+        }
     });
 }
 
@@ -469,7 +482,8 @@ function cancellaTodo(id, isUndo = false) {
     fetch(`${API_TODOS}/${id}`, { method: "DELETE" })
     .then(() => {
         if(!isUndo) mostraNotifica("Attività eliminata", true);
-        getTodo();
+        todo_arr = todo_arr.filter(t => t.id !== id);
+        popolaCardTodos(todo_arr);
     })
     .catch(err => console.error(err));
 }
