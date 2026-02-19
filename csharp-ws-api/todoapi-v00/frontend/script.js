@@ -13,6 +13,7 @@ se l'utente è stato riconosciuto per 10 minuti avrà accesso alla/e pagina/e pe
 
 ----------- DA FARE -----------
 cp -r ./todoapi-v00/frontend /var/www/html/
+git add . && git commit -m "fix" && git push origin main
 */
 
 const API_TODOS = "https://shiny-broccoli-5gvg4jj5x9w5c7rw-5004.app.github.dev/todo";
